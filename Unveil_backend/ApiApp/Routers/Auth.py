@@ -23,13 +23,12 @@ def register(request, payload: UserCreateSchema):
 
     # Create the user
     user = User.objects.create(
-        username=payload.email,  # Optionally store the email as username
+        username=payload.email,  
         email=payload.email,
-        password=make_password(payload.password),  # Hash the password
+        password=make_password(payload.password),  
     )
 
-    # Create a token for the user with expiration
-    token = get_random_string(32)  # Generate a random token
+    token = get_random_string(32)  
     expires_at = timezone.now() + timedelta(hours=TOKEN_EXPIRATION_HOURS)  # Set expiration time
     TokenClass.objects.create(user=user, token=token, expires_at=expires_at)  # Store the token with expiration
 
@@ -70,18 +69,17 @@ def login(request, payload: UserLoginSchema):
 # AuthBearer for token authentication
 class AuthBearer(HttpBearer):
     def authenticate(self, request, token):
-        # Check if the token exists in the database and has not expired
         token_instance = TokenClass.objects.filter(token=token).first()
 
         if token_instance and token_instance.expires_at > timezone.now():
-            return token_instance.user  # Return the user if the token is valid and not expired
-        return None  # Return None if the token is invalid or expired
+            return token_instance.user  
+        return None  
 
 
 # Get authenticated user's profile
 @router.get("/user/", response={200: UserdataResponce, 401: ErrorResponse}, auth=AuthBearer())
 def get_user(request):
-    user = request.auth  # This comes from the AuthBearer
+    user = request.auth  
     return UserdataResponce(id=user.id, username=user.username, email=user.email)  # Use response schema
 
 # Protected route example

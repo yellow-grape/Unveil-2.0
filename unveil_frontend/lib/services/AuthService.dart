@@ -8,6 +8,8 @@ class AuthService {
 
   AuthService({this.baseUrl = "http://127.0.0.1:8000/api"}) : dio = Dio();
 
+  get instance => null;
+
   /// Register a new user
   Future<Map<String, dynamic>> register(Map<String, dynamic> userData, String email) async {
     final response = await _postRequest('/Auth/register/', userData);
@@ -24,7 +26,7 @@ class AuthService {
 
   /// Logout the user
   Future<void> logout() async {
-    final token = await _getToken(); // Get the stored token
+    final token = await getToken(); // Get the stored token
     await _deleteRequest('/auth/logout/', token!);
     await _removeToken(); // Remove the token after logout
   }
@@ -32,7 +34,7 @@ class AuthService {
   /// Get the current user's ID
   Future<Map<String, dynamic>> fetchUserInfo() async {
     try {
-      final token = await _getToken(); // Get the stored token
+      final token = await getToken(); // Get the stored token
       final response = await dio.get('$baseUrl/Auth/user/', options: Options(
         headers: {
           'Authorization': 'Bearer $token', // Set the token in the header
@@ -84,7 +86,7 @@ class AuthService {
     await prefs.setString('auth_token', token);
   }
 
-  Future<String?> _getToken() async {
+  Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('auth_token');
   }

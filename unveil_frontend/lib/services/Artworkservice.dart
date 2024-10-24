@@ -1,3 +1,4 @@
+import 'dart:html' as html; // Ensure this is imported
 import 'package:dio/dio.dart';
 
 class ArtworkService {
@@ -6,60 +7,73 @@ class ArtworkService {
 
   ArtworkService({this.baseUrl = "http://127.0.0.1:8000/api"}) : dio = Dio();
 
-  // Fetch all artworks
   Future<List<Map<String, dynamic>>> fetchArtworks() async {
     try {
-      final response = await dio.get('$baseUrl/Artwork/artwork/'); // Updated endpoint to match the case
+      final response = await dio.get('$baseUrl/Artwork/artwork/');
       if (response.statusCode == 200) {
-        // Map the JSON response to a list of artworks
         List<dynamic> artworks = response.data;
         return artworks.map((artwork) => {
           'id': artwork['id'],
           'author': artwork['author'],
-          'image': artwork['ArtWork'],  // Use 'ArtWork' key to get image URL
+          'image': artwork['artwork_image'],
           'title': artwork['title'],
           'description': artwork['description'],
           'createdAt': artwork['created_at'],
-          
         }).toList();
       } else {
-        print('Failed to load artworks: ${response.statusCode}');
         return [];
       }
     } catch (e) {
-      print('Error: $e');
       return [];
     }
   }
 
-  // Create a new artwork
-  Future<Map<String, dynamic>> createArtwork(Map<String, dynamic> artworkData) async {
+  Future<Map<String, dynamic>> createArtwork(Map<String, dynamic> artworkData, String authToken, html.File image) async {
     try {
+      // Read the image file as bytes
+      final reader = html.FileReader();
+      reader.readAsArrayBuffer(image);
+      
+      // Await the reader to finish
+      await reader.onLoadEnd.first;
+
+      // Create FormData
+      FormData formData = FormData.fromMap({
+        'title': artworkData['title'],
+        'description': artworkData['description'],
+        'image': MultipartFile.fromBytes(reader.result as List<int>, filename: image.name),
+      });
+
       final response = await dio.post(
-        '$baseUrl/artwork/', // Ensure this URL is correct
-        data: artworkData,
+        '$baseUrl/Artwork/artwork/',
+        data: formData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $authToken',
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
       );
+
       return Map<String, dynamic>.from(response.data);
     } on DioError catch (e) {
-      throw Exception('Failed to create artwork: ${e.response?.statusCode}');
+      throw Exception('Failed to create artwork: ${e.response?.statusCode} ${e.response?.data}');
     }
   }
 
-  // Fetch a single artwork by ID
   Future<Map<String, dynamic>> fetchArtwork(int artworkId) async {
     try {
-      final response = await dio.get('$baseUrl/Artwork/$artworkId/'); // Ensure this URL is correct
+      final response = await dio.get('$baseUrl/Artwork/$artworkId/');
       return Map<String, dynamic>.from(response.data);
-    } on DioException catch (e) {
+    } on DioError catch (e) {
       throw Exception('Failed to load artwork: ${e.response?.statusCode}');
     }
   }
 
-  // Update an existing artwork
   Future<Map<String, dynamic>> updateArtwork(int artworkId, Map<String, dynamic> artworkData) async {
     try {
       final response = await dio.put(
-        '$baseUrl/Artwork/$artworkId/', // Ensure this URL is correct
+        '$baseUrl/Artwork/$artworkId/',
         data: artworkData,
       );
       return Map<String, dynamic>.from(response.data);
@@ -68,10 +82,9 @@ class ArtworkService {
     }
   }
 
-  // Delete an artwork by ID
   Future<void> deleteArtwork(int artworkId) async {
     try {
-      await dio.delete('$baseUrl/Artwork/$artworkId/'); // Ensure this URL is correct
+      await dio.delete('$baseUrl/Artwork/$artworkId/');
     } on DioError catch (e) {
       throw Exception('Failed to delete artwork: ${e.response?.statusCode}');
     }

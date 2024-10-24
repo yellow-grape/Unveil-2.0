@@ -149,7 +149,7 @@
                               ),
                             ),
                             const SizedBox(width: 10),
-                            // Right side button for Next
+                            // Right side button for Nexts
                             GestureDetector(
                               onTap: _nextArtwork,
                               child: Container(

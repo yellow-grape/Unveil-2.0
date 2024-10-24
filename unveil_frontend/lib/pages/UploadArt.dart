@@ -1,6 +1,7 @@
-import 'dart:io';
+import 'dart:html' as html; // Ensure this is imported
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:unveil_frontend/services/Artworkservice.dart';
+import 'package:unveil_frontend/services/AuthService.dart';
 
 class UploadArt extends StatefulWidget {
   const UploadArt({super.key});
@@ -10,16 +11,64 @@ class UploadArt extends StatefulWidget {
 }
 
 class _UploadArtState extends State<UploadArt> {
-  XFile? _image; // To hold the selected image
+  final ars = ArtworkService();
+
+  html.File? _image; // To hold the selected image
+  String? _imageUrl; // To display the image
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
 
   Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? selectedImage = await picker.pickImage(source: ImageSource.gallery);
+    html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+    uploadInput.accept = 'image/*'; // Accept only image files
+    uploadInput.click(); // Open file picker dialog
 
-    if (selectedImage != null) {
-      setState(() {
-        _image = selectedImage; // Store the selected image
-      });
+    uploadInput.onChange.listen((e) {
+      final files = uploadInput.files;
+      if (files != null && files.isNotEmpty) {
+        setState(() {
+          _image = files.first;
+          _imageUrl = html.Url.createObjectUrl(_image); // Create a URL for the image
+        });
+      }
+    });
+  }
+
+  void _uploadArtwork() async {
+    if (_titleController.text.isEmpty || _descriptionController.text.isEmpty || _image == null) {
+      // Show an error if any field is empty or no image is selected
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please fill in all fields and select an image')),
+      );
+      return;
+    }
+
+    // Get the authentication token
+    final authToken = await AuthService().getToken();
+    
+    if (authToken == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Authentication failed')),
+      );
+      return;
+    }
+
+    final artworkData = {
+      'title': _titleController.text,
+      'description': _descriptionController.text,
+    };
+
+    try {
+      await ars.createArtwork(artworkData, authToken, _image!);
+      // Handle success
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Artwork uploaded successfully!')),
+      );
+    } catch (error) {
+      // Handle error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to upload artwork: $error')),
+      );
     }
   }
 
@@ -29,11 +78,11 @@ class _UploadArtState extends State<UploadArt> {
     final textColor = isDarkMode ? Colors.white : Colors.black;
 
     // Set the width of the text fields
-    final textFieldWidth = MediaQuery.of(context).size.width > 600 ? 350.0 : double.infinity; // Adjusted width
+    final textFieldWidth = MediaQuery.of(context).size.width > 600 ? 350.0 : double.infinity;
 
     return Scaffold(
       appBar: AppBar(
-        title: Center(child: const Text('Upload Artwork')),
+        title: const Center(child: Text('Upload Artwork')),
       ),
       body: Center(
         child: Padding(
@@ -42,9 +91,9 @@ class _UploadArtState extends State<UploadArt> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _buildTextField('Artwork Title', 'Enter artwork title', textFieldWidth),
+              _buildTextField('Artwork Title', 'Enter artwork title', textFieldWidth, _titleController),
               const SizedBox(height: 20),
-              _buildTextField('Artwork Description', 'Enter artwork description', textFieldWidth, maxLines: 4),
+              _buildTextField('Artwork Description', 'Enter artwork description', textFieldWidth, _descriptionController, maxLines: 4),
               const SizedBox(height: 20),
               Text(
                 'Upload Image',
@@ -55,25 +104,25 @@ class _UploadArtState extends State<UploadArt> {
                 ),
               ),
               GestureDetector(
-                onTap: _pickImage, // Trigger image picker on tap
+                onTap: _pickImage,
                 child: Container(
-                  height: 200,
-                  width: double.infinity,
+                  constraints: const BoxConstraints(
+                    maxWidth: 1080, // Set max width to 1080px
+                    maxHeight: 1080, // Set max height to 1080px
+                  ),
                   color: Colors.grey[300],
-                  child: _image == null
+                  child: _imageUrl == null
                       ? const Center(child: Text('Tap to select an image'))
-                      : Image.file(
-                          File(_image!.path),
-                          fit: BoxFit.cover,
+                      : Image.network(
+                          _imageUrl!,
+                          fit: BoxFit.contain, // Ensure the image fits inside the box
                         ),
                 ),
               ),
               const SizedBox(height: 20),
               _minimalistButton(
                 label: 'Upload',
-                onPressed: () {
-                  // Handle upload action
-                },
+                onPressed: _uploadArtwork,
                 color: isDarkMode ? Colors.white : Colors.black,
                 textColor: isDarkMode ? Colors.black : Colors.white,
               ),
@@ -84,7 +133,7 @@ class _UploadArtState extends State<UploadArt> {
     );
   }
 
-  Widget _buildTextField(String label, String hint, double width, {int maxLines = 1}) {
+  Widget _buildTextField(String label, String hint, double width, TextEditingController controller, {int maxLines = 1}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -95,17 +144,18 @@ class _UploadArtState extends State<UploadArt> {
             fontWeight: FontWeight.w300,
             color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
           ),
-          textAlign: TextAlign.center, // Center align the label
+          textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Container(
           width: width,
           child: TextField(
             maxLines: maxLines,
-            textAlign: TextAlign.center, // Center align the text inside the field
+            textAlign: TextAlign.center,
+            controller: controller,
             decoration: InputDecoration(
               hintText: hint,
-              border: OutlineInputBorder(),
+              border: const OutlineInputBorder(),
             ),
           ),
         ),
