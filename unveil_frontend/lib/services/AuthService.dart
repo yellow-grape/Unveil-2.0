@@ -3,11 +3,10 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-   String baseUrl;
+  final String baseUrl;
   final Dio dio;
-  AuthService({this.baseUrl = "http://127.0.0.1:8000/api"}) : dio = Dio() ;
 
-  
+  AuthService({this.baseUrl = "http://127.0.0.1:8000/api"}) : dio = Dio();
 
   /// Register a new user
   Future<Map<String, dynamic>> register(Map<String, dynamic> userData, String email) async {
@@ -30,11 +29,24 @@ class AuthService {
     await _removeToken(); // Remove the token after logout
   }
 
-  /// Get the current user profile
-  Future<Map<String, dynamic>> getProfile() async {
-    final token = await _getToken(); // Get the stored token
-    final response = await _getRequest('/auth/profile/', token!);
-    return _parseSingleResponse(response);
+  /// Get the current user's ID
+  Future<Map<String, dynamic>> fetchUserInfo() async {
+    try {
+      final token = await _getToken(); // Get the stored token
+      final response = await dio.get('$baseUrl/Auth/user/', options: Options(
+        headers: {
+          'Authorization': 'Bearer $token', // Set the token in the header
+        },
+      ));
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(response.data);
+      } else {
+        print('Failed to load user info: ${response.statusCode}');
+        return {};
+      }
+    } on DioException catch (e) {
+      throw Exception('Failed to load user info: ${e.response?.statusCode}');
+    }
   }
 
   // Private Methods for HTTP Requests
@@ -61,7 +73,7 @@ class AuthService {
     try {
       dio.options.headers['Authorization'] = 'Bearer $token';
       await dio.delete('$baseUrl$path');
-    } on DioError catch (e) {
+    } on DioException catch (e) {
       _handleError(e);
     }
   }

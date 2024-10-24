@@ -4,12 +4,30 @@ import 'package:unveil_frontend/pages/ViewArtWork.dart';
 import 'package:unveil_frontend/pages/account.dart';
 import 'package:unveil_frontend/pages/login.dart';
 import 'package:unveil_frontend/pages/signup.dart';
+import 'package:unveil_frontend/services/AuthService.dart';
 
 void main() {
   // Set isAuthenticated to true or false based on your logic
   bool isAuthenticated = false; // Change to true if the user is authenticated
 
-  runApp(MainView(isAuthenticated: isAuthenticated));
+  runApp(MyApp(isAuthenticated: isAuthenticated));
+}
+
+class MyApp extends StatelessWidget {
+  final bool isAuthenticated;
+
+  const MyApp({super.key, required this.isAuthenticated});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Art Gallery',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: MainView(isAuthenticated: isAuthenticated),
+    );
+  }
 }
 
 class MainView extends StatefulWidget {

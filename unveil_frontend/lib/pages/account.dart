@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import 'package:unveil_frontend/services/AuthService.dart'; // Import Dio for HTTP requests
+import 'package:unveil_frontend/services/AuthService.dart';
+import 'package:unveil_frontend/services/ProflleService.dart';
 
 class Account extends StatefulWidget {
   const Account({super.key});
@@ -14,7 +14,7 @@ class _AccountState extends State<Account> {
   String? email;
   int? lifetimeLikes;
 
-  final AuthService authService = AuthService(); // Create an instance of AuthService
+  final ProfileService profileService = ProfileService(); // Create an instance of ProfileService
 
   @override
   void initState() {
@@ -24,7 +24,7 @@ class _AccountState extends State<Account> {
 
   Future<void> _fetchUserProfile() async {
     try {
-      final profile = await authService.getProfile(); // Fetch the user profile
+      final profile = await AuthService().fetchUserInfo(); // Fetch the user info without userId
       setState(() {
         username = profile['username']; // Set username from the profile
         email = profile['email']; // Set email from the profile

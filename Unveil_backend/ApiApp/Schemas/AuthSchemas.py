@@ -19,10 +19,18 @@ class UserLoginSchema(Schema):
 
 class UserCreateResponse(Schema):
     message: str
+    token: str  # Include token in response
 
 class LoginResponse(Schema):
     message: str
-    token:str
+    token: str
+    
+    
+class UserdataResponce(Schema):
+    id:int
+    username:str
+    email:str
+    
 
 class ErrorResponse(Schema):
     error: str
