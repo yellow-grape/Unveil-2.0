@@ -1,4 +1,4 @@
-import 'dart:html' as html; // Ensure this is imported
+import 'dart:io';
 import 'package:dio/dio.dart';
 
 class ArtworkService {
@@ -7,41 +7,39 @@ class ArtworkService {
 
   ArtworkService({this.baseUrl = "http://127.0.0.1:8000/api"}) : dio = Dio();
 
+  // Fetch all artworks
   Future<List<Map<String, dynamic>>> fetchArtworks() async {
     try {
       final response = await dio.get('$baseUrl/Artwork/artwork/');
       if (response.statusCode == 200) {
-        List<dynamic> artworks = response.data;
-        return artworks.map((artwork) => {
+        return List<Map<String, dynamic>>.from(response.data.map((artwork) => {
           'id': artwork['id'],
           'author': artwork['author'],
           'image': artwork['artwork_image'],
           'title': artwork['title'],
           'description': artwork['description'],
           'createdAt': artwork['created_at'],
-        }).toList();
+        }));
       } else {
-        return [];
+        print("Error fetching artworks: ${response.statusCode}");
       }
     } catch (e) {
-      return [];
+      print("Error fetching artworks: $e");
     }
+    return [];
   }
 
-  Future<Map<String, dynamic>> createArtwork(Map<String, dynamic> artworkData, String authToken, html.File image) async {
+  // Create artwork with image upload
+  Future<Map<String, dynamic>> createArtwork(
+      Map<String, dynamic> artworkData, File imageFile, String authToken) async {
     try {
-      // Read the image file as bytes
-      final reader = html.FileReader();
-      reader.readAsArrayBuffer(image);
-      
-      // Await the reader to finish
-      await reader.onLoadEnd.first;
-
-      // Create FormData
-      FormData formData = FormData.fromMap({
+      var formData = FormData.fromMap({
         'title': artworkData['title'],
         'description': artworkData['description'],
-        'image': MultipartFile.fromBytes(reader.result as List<int>, filename: image.name),
+        'file': await MultipartFile.fromFile(
+          imageFile.path,
+          filename: imageFile.path.split('/').last,
+        ),
       });
 
       final response = await dio.post(
@@ -50,43 +48,69 @@ class ArtworkService {
         options: Options(
           headers: {
             'Authorization': 'Bearer $authToken',
-            'Content-Type': 'multipart/form-data',
           },
         ),
       );
 
-      return Map<String, dynamic>.from(response.data);
+      if (response.statusCode == 201) {
+        return Map<String, dynamic>.from(response.data);
+      } else {
+        print("Failed to create artwork: ${response.statusCode}");
+        throw Exception('Failed to create artwork');
+      }
     } on DioError catch (e) {
-      throw Exception('Failed to create artwork: ${e.response?.statusCode} ${e.response?.data}');
+      print("Failed to create artwork: ${e.response?.statusCode} ${e.response?.data}");
+      throw Exception('Failed to create artwork: ${e.message}');
     }
   }
 
+  // Fetch a single artwork by ID
   Future<Map<String, dynamic>> fetchArtwork(int artworkId) async {
     try {
       final response = await dio.get('$baseUrl/Artwork/$artworkId/');
-      return Map<String, dynamic>.from(response.data);
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(response.data);
+      } else {
+        print("Failed to load artwork: ${response.statusCode}");
+        throw Exception('Failed to load artwork');
+      }
     } on DioError catch (e) {
-      throw Exception('Failed to load artwork: ${e.response?.statusCode}');
+      print("Failed to load artwork: ${e.response?.statusCode}");
+      throw Exception('Failed to load artwork: ${e.message}');
     }
   }
 
+  // Update artwork
   Future<Map<String, dynamic>> updateArtwork(int artworkId, Map<String, dynamic> artworkData) async {
     try {
       final response = await dio.put(
         '$baseUrl/Artwork/$artworkId/',
         data: artworkData,
       );
-      return Map<String, dynamic>.from(response.data);
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(response.data);
+      } else {
+        print("Failed to update artwork: ${response.statusCode}");
+        throw Exception('Failed to update artwork');
+      }
     } on DioError catch (e) {
-      throw Exception('Failed to update artwork: ${e.response?.statusCode}');
+      print("Failed to update artwork: ${e.response?.statusCode}");
+      throw Exception('Failed to update artwork: ${e.message}');
     }
   }
 
+  // Delete artwork by ID
   Future<void> deleteArtwork(int artworkId) async {
     try {
-      await dio.delete('$baseUrl/Artwork/$artworkId/');
+      final response = await dio.delete('$baseUrl/Artwork/$artworkId/');
+      if (response.statusCode != 204) {
+        print("Failed to delete artwork: ${response.statusCode}");
+        throw Exception('Failed to delete artwork');
+      }
     } on DioError catch (e) {
-      throw Exception('Failed to delete artwork: ${e.response?.statusCode}');
+      print("Failed to delete artwork: ${e.response?.statusCode}");
+      throw Exception('Failed to delete artwork: ${e.message}');
     }
   }
 }

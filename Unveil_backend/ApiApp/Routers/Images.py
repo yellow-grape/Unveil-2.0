@@ -10,11 +10,10 @@ from urllib.parse import urljoin
 from ApiApp.models import ArtWork
 
 router = Router()
-
-def generate_image_url(request: HttpRequest, image_path: str) -> str:
-    return request.build_absolute_uri(f"{settings.MEDIA_URL}{image_path}")
-
-
+def generate_image_url(request, file_name):
+    
+    # Ensure file_name is safe and doesn't contain any unwanted characters
+    return f"{request.scheme}://{request.get_host()}/{file_name}"
 @router.get("/fetch-image/{artwork_id}")
 def fetch_image(request: HttpRequest, artwork_id: int):
     artwork_ = get_object_or_404(ArtWork, id=artwork_id)
